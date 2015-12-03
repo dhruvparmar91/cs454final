@@ -1,0 +1,16 @@
+{
+  "name": "cs454final",
+  "version": "1.0.0",
+  "description": "final presentation app",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bell": "^6.0.0",
+    "hapi": "^11.1.2",
+    "inert": "^3.2.0"
+  }
+}
