@@ -1,8 +1,14 @@
 var Hapi = require('hapi');
+var Good = require('good');
 var server = new Hapi.Server();
 var bell = require('bell');
 server.connection({ port: 3000 });
 
+// .post('/get/ip/address', function (req, res) {
+// 	var connectionNames = request.connection.remoteAddress;
+// 	console.log(connectionNames+"connection");
+//     // need access to IP address here
+// })
 function checkPassword(data) {
 	var return_string;
 	if(data.password === data.password_confirm) {
@@ -38,6 +44,21 @@ server.register(require('inert'), function (err) {
     if (err) {
         throw err;
     }
+		server.register({
+		    register: Good,
+		    options: {
+		        reporters: [{
+		            reporter: require('good-console'),
+		            events: {
+		                response: '*',
+		                log: '*'
+		            }
+		        }]
+		    }
+		}, function (err) {
+		    if (err) {
+		        throw err; // something bad happened loading the plugin
+		    }
 
     server.route({
         method: 'GET',
@@ -57,7 +78,7 @@ server.register(require('inert'), function (err) {
         method: 'POST',
         path: '/register',
         handler: function (request, reply) {
-            
+
             var data = request.payload;
             console.log(data);
          	reply(checkPassword(data));
@@ -67,8 +88,8 @@ server.register(require('inert'), function (err) {
         method: 'GET',
         path: '/login',
         handler: function (request, reply) {
-            reply.file('./public/login.html');
-        }
+					  reply.file('./public/login.html');
+					  }
     });
       server.route({
         method: '*',
@@ -95,6 +116,7 @@ server.register(require('inert'), function (err) {
 
 
 server.start(function () {
-    console.log('Server running at:', server.info.uri);
+  //  console.log('Server running at:', server.info.uri);
+		server.log('info', 'Server running at: ' + server.info.uri);
 });
-
+});
