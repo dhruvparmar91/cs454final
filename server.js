@@ -1,8 +1,60 @@
 var Hapi = require('hapi');
-
 var server = new Hapi.Server();
-var bell = require('bell');
+var Joi = require('joi');
+
 server.connection({ port: 3000 });
+
+
+var Boom = require("boom");
+ 
+var dbOpts = {
+    "url": "mongodb://localhost:27017/test",
+    "settings": {
+        "db": {
+            "native_parser": false
+        }
+    }
+};
+
+
+
+server.register({
+    register: require('hapi-mongodb'),
+    options: dbOpts
+}, function (err) {
+    if (err) {
+        console.error(err);
+        throw err;
+    }
+});
+
+
+server.method('isValidUser', function (request,reply, next) {
+   
+    var flag = false;
+     var user = {"name" : request.payload.username, "pass" : request.payload.password};
+     var db = request.server.plugins['hapi-mongodb'].db;
+     db.collection('users').
+     findOne(user, function(err, result) {
+                if (err) return reply(Boom.internal('Internal MongoDB error', err));
+                if(result == null){
+                    
+                    reply.view('login', {"message" : "username and/or password invalid"});
+                }
+                else {
+                    flag = true;
+                    reply.view('userpage', {"username" : request.payload.username});
+                }
+                });
+    next(null, flag); });
+
+//SERVER LOG IS DEFINED HERE  
+server.on('log', (event, tags) => {
+    if (tags.error) {
+        console.log(event);
+    }
+});
+
 
 function checkPassword(data) {
 	var return_string;
@@ -14,32 +66,25 @@ function checkPassword(data) {
 	}
 	return return_string;
 }
-server.register(bell, (err) => {
-  server.auth.strategy('google', 'bell', {
-        provider: 'google',
-        password: 'password',
-        isSecure: false,
-        // You'll need to go to https://console.developers.google.com and set up an application to get started
-        // Once you create your app, fill out "APIs & auth >> Consent screen" and make sure to set the email field
-        // Next, go to "APIs & auth >> Credentials and Create new Client ID
-        // Select "web application" and set "AUTHORIZED JAVASCRIPT ORIGINS" and "AUTHORIZED REDIRECT URIS"
-        // This will net you the clientId and the clientSecret needed.
-        // Also be sure to pass the location as well. It must be in the list of "AUTHORIZED REDIRECT URIS"
-        // You must also enable the Google+ API in your profile.
-        // Go to APIs & Auth, then APIs and under Social APIs click Google+ API and enable it.
-        clientId: '250947141266-borodb5j61p6og3055duh31c8snln6mb.apps.googleusercontent.com',
-        clientSecret: 'GIyQtYoTKe_oO8buw242k0dy',
-        location: server.info.uri
-    });
-});
 
-//LOGGING IS DEFINED HERE  
-server.on('log', (event, tags) => {
-    if (tags.error) {
-        console.log(event);
+var loginHandler = function(request,reply) {
+    if(request.payload.username !== null) {
+        return reply.view('userpage', {"username" : request.payload.username});
     }
-});
+    return reply.view('login', {"message" : "username and/or password invalid"});
+}
 
+
+server.register(require('vision'), function (err) {
+
+    server.views({
+        engines: {
+            html: require('handlebars')
+        },
+        relativeTo: __dirname,
+        path: 'public'
+    });
+});
 
 server.register(require('inert'), function (err) {
     if (err) {
@@ -60,14 +105,45 @@ server.register(require('inert'), function (err) {
             reply.file('./public/register.html');
         }
     });
-      server.route({
+       server.route({
         method: 'POST',
         path: '/register',
-        handler: function (request, reply) {
+        config: {
+            validate: {
+                payload:{
+                    username: Joi.string().min(2).max(20),
+                    email: Joi.string().email().required(),
+                    password: Joi.string().min(2).max(200).required(),
+                    password_confirm:Joi.any().valid(Joi.ref('password')).required()   
+                }
 
+            }
+
+        },
+        handler: function (request, reply) {
+            
             var data = request.payload;
-            console.log(data);
-         	reply(checkPassword(data));
+
+            var db = request.server.plugins['hapi-mongodb'].db;
+            var user = {name: data.username, pass:data.password};
+            //var ObjectID = request.server.plugins['hapi-mongodb'].ObjectID;
+
+
+              db.collection('users').findOne({  "name" : data.username }, function(err, result) {
+                if (err) return reply(Boom.internal('Internal MongoDB error', err));
+                //reply(result);
+                //console.log(result);
+                if(result == null){
+                    db.collection('users').insert(user);
+                    reply.redirect('/login');
+                }
+                else{
+                    reply.view('register', {"message" : "username already exists"});
+                }
+                
+                });
+ 
+
         }
     });
       server.route({
@@ -76,32 +152,34 @@ server.register(require('inert'), function (err) {
         handler: function (request, reply) {
             reply.file('./public/login.html');
         }
+     
     });
-      server.route({
-        method: '*',
-        path: '/bell/door',
-        config: {
-            auth: {
-                strategy: 'google',
-                mode: 'try'
-            },
-            handler: function (request, reply) {
+       server.route({
+        method: 'POST',
+        path: '/login',
+        config: {
+            validate: {
+                payload:{
+                    username: Joi.string().min(2).max(20),
+                    password: Joi.string().min(2).max(200).required(),  
+                }
 
-                if (!request.auth.isAuthenticated) {
-                    return reply('Authentication failed due to: ' + request.auth.error.message);
-                }
-                reply('<pre>' + JSON.stringify(request.auth.credentials, null, 4) + '</pre>');
+            }
 
+        },
+        handler: function (request, reply) {
 
-                return reply.redirect('/userpage');
-            }
-        }
-    });
+            server.methods.isValidUser(request,reply, 
+                function (err, result){
+                });
+        }
+    });
        
 });
 
 
 server.start(function () {
     console.log('Server running at:', server.info.uri);
-		server.log(['error', 'database', 'read'], 'Test event');
+    server.log(['error', 'database', 'read'], 'Test event');
 });
+
