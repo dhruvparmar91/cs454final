@@ -56,7 +56,6 @@ server.register(require('inert'), function (err) {
         path: '/login',        
         handler: function (request, reply) {
             reply.file('./public/login.html')
-            //console.log(request);
         }
        
     });
@@ -89,7 +88,7 @@ server.register(require('inert'), function (err) {
                 if (err) return reply(Boom.internal('Internal MongoDB error', err));
                 if(result == null){
                     db.collection('users').insert(doc);
-                    reply.redirect('/login');
+                    repl1y.redirect('/login');
                 }
                 else{
                     reply(Boom.unauthorized('username already exist'));
@@ -112,4 +111,6 @@ server.register(require('inert'), function (err) {
 server.start(function () {
     console.log('Server running at:', server.info.uri);
 });
+
+module.exports = server;
 
