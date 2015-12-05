@@ -4,6 +4,13 @@ var Joi = require('joi');
 
 server.connection({ port: 3000 });
 
+server.state('session', {
+    ttl: 24 * 60 * 60 * 1000,     // One day
+    isSecure: false,
+    path: '/',
+    encoding: 'base64json'
+});
+
 
 var Boom = require("boom");
  
@@ -16,8 +23,6 @@ var dbOpts = {
     }
 };
 
-
-
 server.register({
     register: require('hapi-mongodb'),
     options: dbOpts
@@ -27,53 +32,6 @@ server.register({
         throw err;
     }
 });
-
-
-server.method('isValidUser', function (request,reply, next) {
-   
-    var flag = false;
-     var user = {"name" : request.payload.username, "pass" : request.payload.password};
-     var db = request.server.plugins['hapi-mongodb'].db;
-     db.collection('users').
-     findOne(user, function(err, result) {
-                if (err) return reply(Boom.internal('Internal MongoDB error', err));
-                if(result == null){
-                    
-                    reply.view('login', {"message" : "username and/or password invalid"});
-                }
-                else {
-                    flag = true;
-                    reply.view('userpage', {"username" : request.payload.username});
-                }
-                });
-    next(null, flag); });
-
-//SERVER LOG IS DEFINED HERE  
-server.on('log', (event, tags) => {
-    if (tags.error) {
-        console.log(event);
-    }
-});
-
-
-function checkPassword(data) {
-	var return_string;
-	if(data.password === data.password_confirm) {
-		return_string = "confirmed password";
-	}
-	else {
-		return_string = "password does not match";
-	}
-	return return_string;
-}
-
-var loginHandler = function(request,reply) {
-    if(request.payload.username !== null) {
-        return reply.view('userpage', {"username" : request.payload.username});
-    }
-    return reply.view('login', {"message" : "username and/or password invalid"});
-}
-
 
 server.register(require('vision'), function (err) {
 
@@ -86,23 +44,58 @@ server.register(require('vision'), function (err) {
     });
 });
 
-server.register(require('inert'), function (err) {
-    if (err) {
-        throw err;
+
+
+server.method('isValidUser', function (request,reply, next) {
+               
+        var flag = false;
+        var user = {"name" : request.payload.username, "pass" : request.payload.password};
+        var db = request.server.plugins['hapi-mongodb'].db;
+        db.collection('users').
+        findOne(user, function(err, result) {
+
+                if (err) return reply(Boom.internal('Internal MongoDB error', err));
+                if(result == null){
+                    
+                    reply.view('login', {"message" : "username and/or password invalid"});
+                }
+                else {
+                    flag = true; 
+                    var session = { user:  request.payload.username};
+                    //session.last = Date.now();
+                    reply.view('userpage', {"username" : session.user}).state('session', session);                   
+                }
+                });
+    next(null, flag); });
+
+//SERVER LOG IS DEFINED HERE  
+server.on('log', (event, tags) => {
+    if (tags.error) {
+        console.log(event);
     }
+});
+
+var loginHandler = function(request,reply) {
+    if(request.payload.username !== null) {
+        return reply.view('userpage', {"username" : request.payload.username});
+    }
+    return reply.view('login', {"message" : "username and/or password invalid"});
+}
+
+
 
     server.route({
         method: 'GET',
         path: '/',
         handler: function (request, reply) {
-            reply.file('./public/hello.html');
+            reply.view('hello');
         }
     });
      server.route({
         method: 'GET',
         path: '/register',
         handler: function (request, reply) {
-            reply.file('./public/register.html');
+            reply.view('register');
         }
     });
        server.route({
@@ -115,15 +108,16 @@ server.register(require('inert'), function (err) {
                     email: Joi.string().email().required(),
                     password: Joi.string().min(2).max(200).required(),
                     password_confirm:Joi.any().valid(Joi.ref('password')).required()   
+                },
+                failAction: function (request, reply) {
+                return reply.view('register',{"message" : "one or more fields invalid"});
                 }
-
             }
 
         },
         handler: function (request, reply) {
             
             var data = request.payload;
-
             var db = request.server.plugins['hapi-mongodb'].db;
             var user = {name: data.username, pass:data.password};
             //var ObjectID = request.server.plugins['hapi-mongodb'].ObjectID;
@@ -140,17 +134,21 @@ server.register(require('inert'), function (err) {
                 else{
                     reply.view('register', {"message" : "username already exists"});
                 }
-                
                 });
- 
-
         }
     });
       server.route({
         method: 'GET',
         path: '/login',
         handler: function (request, reply) {
-            reply.file('./public/login.html');
+            console.log(request.state);
+            var session = request.state.session;
+            if(session) {
+                reply.view('userpage',{"username" : session.user});
+            }
+            else {
+                reply.view('login');
+            }
         }
      
     });
@@ -171,12 +169,11 @@ server.register(require('inert'), function (err) {
 
             server.methods.isValidUser(request,reply, 
                 function (err, result){
+                   
                 });
+
         }
     });
-       
-});
-
 
 server.start(function () {
     console.log('Server running at:', server.info.uri);

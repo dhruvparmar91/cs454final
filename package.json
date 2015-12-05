@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bell": "^6.0.0",
     "handlebars": "^4.0.5",
     "hapi": "^11.1.2",
     "hapi-mongodb": "^4.1.0",
