@@ -56,8 +56,8 @@ server.method('isValidUser', function (request,reply, next) {
 
                 if (err) return reply(Boom.internal('Internal MongoDB error', err));
                 if(result == null){
-                    
-                    reply.view('login', {"message" : "username and/or password invalid"});
+                    reply("error");
+                    //reply.view('login', {"message" : "username and/or password invalid"});
                 }
                 else {
                     flag = true; 
@@ -108,10 +108,10 @@ var loginHandler = function(request,reply) {
                     email: Joi.string().email().required(),
                     password: Joi.string().min(2).max(200).required(),
                     password_confirm:Joi.any().valid(Joi.ref('password')).required()   
-                },
-                failAction: function (request, reply) {
-                return reply.view('register',{"message" : "one or more fields invalid"});
                 }
+                // failAction: function (request, reply) {
+                // return reply.view('register',{"message" : "one or more fields invalid"});
+                // }
             }
 
         },
@@ -125,13 +125,12 @@ var loginHandler = function(request,reply) {
 
               db.collection('users').findOne({  "name" : data.username }, function(err, result) {
                 if (err) return reply(Boom.internal('Internal MongoDB error', err));
-                //reply(result);
-                //console.log(result);
                 if(result == null){
                     db.collection('users').insert(user);
                     reply.redirect('/login');
                 }
                 else{
+
                     reply.view('register', {"message" : "username already exists"});
                 }
                 });
@@ -180,3 +179,4 @@ server.start(function () {
     server.log(['error', 'database', 'read'], 'Test event');
 });
 
+module.exports = server;
