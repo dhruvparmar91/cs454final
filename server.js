@@ -95,7 +95,6 @@
                         else {
                             flag = true; 
                             var session = { user:  request.payload.username};
-                            //session.last = Date.now();
                             reply.view('userpage', {"username" : session.user}).state('session', session);                   
                         }
                         });
