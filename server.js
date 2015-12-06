@@ -102,30 +102,6 @@
 
             next(null, flag); });
 
-                // DHRUV CODE
-        var loginHandler = function(request,reply) {
-
-                var flag = false;
-                var user = {"name" : request.payload.username, "pass" : request.payload.password};
-                var db = request.server.plugins['hapi-mongodb'].db;
-
-                db.collection('users').
-                findOne(user, function(err, result) {
-
-                        if (err) return reply(Boom.internal('Internal MongoDB error', err));
-
-                        if(result == null){
-                            reply.view('login', {"message" : "username and/or password invalid"});
-                        }
-                        else {
-                            flag = true; 
-                            var session = { user:  request.payload.username};
-                            reply.view('userpage', {"username" : session.user}).state('session', session);                   
-                        }
-                        });
-        };
-
-
             // SOUMIK CODE
             server.route({
                 method: 'GET',
