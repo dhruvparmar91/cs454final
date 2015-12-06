@@ -1,9 +1,13 @@
+
+
+// SHREY CODE
+
 var Lab = require('lab');          
 var lab = exports.lab = Lab.script(); 
 var Code = require('code');      
 var server = require('../server.js'); 
 
-lab.experiment('Basic HTTP Tests', function() {
+lab.experiment('Register Testng', function() {
     
     lab.test('register', function(done) {
         var options = {
