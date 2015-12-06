@@ -12,7 +12,7 @@ server.state('session', {
 });
 
 
-var Boom = require("boom");
+//var Boom = require("boom");
  
 var dbOpts = {
     "url": "mongodb://localhost:27017/test",
@@ -56,8 +56,8 @@ server.method('isValidUser', function (request,reply, next) {
 
                 if (err) return reply(Boom.internal('Internal MongoDB error', err));
                 if(result == null){
-                    reply("error");
-                    //reply.view('login', {"message" : "username and/or password invalid"});
+                    //reply("error");
+                    reply.view('login', {"message" : "username and/or password invalid"});
                 }
                 else {
                     flag = true; 
