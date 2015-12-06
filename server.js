@@ -1,18 +1,23 @@
 var Hapi = require('hapi');
 var server = new Hapi.Server();
 var Joi = require('joi');
+var Boom = require("boom");
 
 server.connection({ port: 3000 });
 
+//SERVER LOG IS DEFINED HERE  
+server.on('log', (event, tags) => {
+    if (tags.error) {
+        console.log(event);
+    }
+});
+
 server.state('session', {
-    ttl: 24 * 60 * 60 * 1000,     // One day
+    ttl: 60 * 60 * 1000,     // One hour
     isSecure: false,
     path: '/',
     encoding: 'base64json'
 });
-
-
-//var Boom = require("boom");
  
 var dbOpts = {
     "url": "mongodb://localhost:27017/test",
@@ -68,12 +73,6 @@ server.method('isValidUser', function (request,reply, next) {
                 });
     next(null, flag); });
 
-//SERVER LOG IS DEFINED HERE  
-server.on('log', (event, tags) => {
-    if (tags.error) {
-        console.log(event);
-    }
-});
 
 var loginHandler = function(request,reply) {
     if(request.payload.username !== null) {
